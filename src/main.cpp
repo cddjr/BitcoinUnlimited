@@ -5304,6 +5304,41 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
             return true;
         }
 
+        //20170325: start of -enforcebuclient
+        if (pfrom->nVersion < THINBLOCKS_VERSION && GetBoolArg("-enforcebuclient", false)) {
+            int nCount = 0;
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(const CNode* pnode, vNodes) {
+                    if (pnode->fSuccessfullyConnected && !pnode->fDisconnect) {
+                        nCount++;
+                    }
+                }
+            }
+            if (nCount >= 3) {
+                bool bAllow = false;
+                const std::string& ip = pfrom->addr.ToStringIP();
+                const std::string& ipWithPort = pfrom->addr.ToStringIPPort();
+                {
+                    LOCK(cs_vAddedNodes);
+                    BOOST_FOREACH(const std::string& strAddNode, vAddedNodes) {
+                        if (strAddNode == ipWithPort || strAddNode == ip) {
+                            bAllow = true;
+                            break;
+                        }
+                    }
+                }
+                if (!bAllow) {              
+                    LogPrintf("peer=%s using obsolete version %i; disconnecting\n", ipWithPort.c_str(), pfrom->nVersion);
+                    pfrom->PushMessage(NetMsgType::REJECT, strCommand, REJECT_OBSOLETE,
+                                       strprintf("Version must be %d or greater", THINBLOCKS_VERSION));
+                    pfrom->fDisconnect = true;
+                    return false;
+                }
+            }
+        }
+        //20170325: end of -enforcebuclient
+
         pfrom->addrLocal = addrMe;
         if (pfrom->fInbound && addrMe.IsRoutable())
         {
