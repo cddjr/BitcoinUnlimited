@@ -1,6 +1,6 @@
 [Website](https://www.bitcoinunlimited.info)  | [Download](https://www.bitcoinunlimited.info/download) | [Setup](doc/README.md)  |  [Xthin](doc/bu-xthin.md)  |  [Xpedited](doc/bu-xpedited-forwarding.md)  |   [Miner](doc/miner.md)
 
-[![Build Status](https://travis-ci.org/BitcoinUnlimited/BitcoinUnlimited.svg?branch=dev)](https://travis-ci.org/BitcoinUnlimited/BitcoinUnlimited)
+[![Build Status](https://travis-ci.org/cddjr/BitcoinUnlimited.svg?branch=dev)](https://travis-ci.org/cddjr/BitcoinUnlimited)
 
 What is Bitcoin?
 =====================================
@@ -58,7 +58,7 @@ sudo apt-get install libdb4.8-dev libdb4.8++-dev
 
 mkdir -p ~/src
 cd ~/src
-git clone https://github.com/BitcoinUnlimited/BitcoinUnlimited.git bu-src
+git clone https://github.com/cddjr/BitcoinUnlimited.git bu-src
 cd bu-src
 git checkout release
 ./autogen.sh
