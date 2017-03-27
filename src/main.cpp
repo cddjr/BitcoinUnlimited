@@ -5305,7 +5305,8 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
         }
 
         //20170325: start of -enforcebuclient
-        if (pfrom->nVersion < THINBLOCKS_VERSION && GetBoolArg("-enforcebuclient", false)) {
+        if (!pfrom->fInbound 
+            && pfrom->nVersion < THINBLOCKS_VERSION && GetBoolArg("-enforcebuclient", false)) {
             int nCount = 0;
             {
                 LOCK(cs_vNodes);
