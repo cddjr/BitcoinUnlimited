@@ -5876,8 +5876,17 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             }
         }
 
-        if (pindexLast)
+        if (pindexLast) {
             UpdateBlockAvailability(pfrom->GetId(), pindexLast->GetBlockHash());
+
+            // During initial sync the node providing the headers should be giving us large batches of them
+            // and not just trickling them down to us, which is a possible DOS vector.  An attack node would
+            // want to connect and then trickle us the headers which would prevent a timely sync.
+            if ((nCount < MAX_HEADERS_RESULTS) && (pindexLast->nHeight <= pfrom->nStartingHeight - (int)MAX_HEADERS_RESULTS)) { 
+                Misbehaving(pfrom->GetId(), 20);
+                return error("Node not providing enough headers  = %u  peer=%d", nCount, pfrom->id);
+            }
+        }
 
         if (nCount == MAX_HEADERS_RESULTS && pindexLast) {
             // Headers message had its maximum size; the peer may have more headers.
