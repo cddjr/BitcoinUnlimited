@@ -1765,7 +1765,7 @@ void ThreadOpenConnections()
         set<vector<unsigned char> > setConnected;
         {
             LOCK(cs_vNodes);
-            CNode* ptemp;
+            CNode* ptemp = nullptr;
             BOOST_FOREACH (CNode* pnode, vNodes)
             {
                 if (pnode->fOutbound) // only count outgoing connections.
@@ -1783,7 +1783,7 @@ void ThreadOpenConnections()
             // have not yet connected to enough XTHIN nodes.
             if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min((int)MIN_XTHIN_NODES, nMaxOutConnections) && nDisconnects < MAX_DISCONNECTS && IsThinBlocksEnabled())
             {
-                if(ptemp)
+                if(ptemp != nullptr)
                 {
                     ptemp->fDisconnect = true;
                     nDisconnects++;
