@@ -376,7 +376,8 @@ public:
     bool fOneShot;
     bool fClient;
     bool fInbound;
-    bool fNetworkNode;
+    bool fOutbound;    // any outbound node not connected with -addnode, connect-thinblock or -connect
+    bool fNetworkNode; // any outbound node
     bool fSuccessfullyConnected;
     bool fDisconnect;
     // We use fRelayTxes for two purposes -

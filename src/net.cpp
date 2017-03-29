@@ -1768,7 +1768,7 @@ void ThreadOpenConnections()
             CNode* ptemp;
             BOOST_FOREACH (CNode* pnode, vNodes)
             {
-                if (pnode->fNetworkNode) // only count outgoing connections.
+                if (pnode->fOutbound) // only count outgoing connections.
                 {
                     setConnected.insert(pnode->addr.GetGroup());
                     nOutbound++;
@@ -1840,8 +1840,18 @@ void ThreadOpenConnections()
         }
 
         if (addrConnect.IsValid())
+        {
             //Seeded outbound connections track against the original semaphore
-            OpenNetworkConnection(addrConnect, &grant);
+            if(OpenNetworkConnection(addrConnect, &grant))
+            {
+                LOCK(cs_vNodes);
+                CNode* pnode = FindNode((CService)addrConnect);
+                // We need to use a separate outbound flag so as not to differentiate these outbound 
+                // nodes with ones that were added using -addnode -connect-thinblock or -connect.
+                if (pnode)
+                    pnode->fOutbound = true;
+            }
+        }
     }
 }
 
@@ -2643,6 +2653,7 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
     fOneShot = false;
     fClient = false; // set by version message
     fInbound = fInboundIn;
+    fOutbound = false;
     fNetworkNode = false;
     fSuccessfullyConnected = false;
     fDisconnect = false;
@@ -2726,6 +2737,7 @@ CNode::~CNode()
     // We must set this to false on disconnect otherwise we will have trouble reconnecting -addnode nodes
     // if the remote peer restarts.
     fSuccessfullyConnected = false;
+    fOutbound = false;
 
     // BUIP010 - Xtreme Thinblocks - end section
 
