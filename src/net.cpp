@@ -1748,7 +1748,7 @@ void ThreadOpenConnections()
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    int nDisconnects = 0;
+    unsigned int nDisconnects = 0;
     while (true)
     {
         ProcessOneShot();
@@ -1781,7 +1781,7 @@ void ThreadOpenConnections()
             }
             // Disconnect a node that is not XTHIN capable if all outbound slots are full and we
             // have not yet connected to enough XTHIN nodes.
-            if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min(4, nMaxOutConnections) && nDisconnects < 500 && IsThinBlocksEnabled())
+            if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min((int)MIN_XTHIN_NODES, nMaxOutConnections) && nDisconnects < MAX_DISCONNECTS && IsThinBlocksEnabled())
             {
                 if(ptemp)
                 {
