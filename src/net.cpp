@@ -1748,10 +1748,48 @@ void ThreadOpenConnections()
 
     // Initiate network connections
     int64_t nStart = GetTime();
-    while (true) {
+    int nDisconnects = 0;
+    while (true)
+    {
         ProcessOneShot();
 
         MilliSleep(500);
+
+        // Only connect out to one peer per network group (/16 for IPv4).
+        // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
+        // And also must do this before the semaphore grant so that we don't have to block
+        // if the grants are all taken and we want to disconnect a node in the event that
+        // we don't have enough connections to XTHIN capable nodes yet.
+        int nOutbound = 0;
+        int nThinBlockCapable = 0;
+        set<vector<unsigned char> > setConnected;
+        {
+            LOCK(cs_vNodes);
+            CNode* ptemp;
+            BOOST_FOREACH (CNode* pnode, vNodes)
+            {
+                if (pnode->fNetworkNode) // only count outgoing connections.
+                {
+                    setConnected.insert(pnode->addr.GetGroup());
+                    nOutbound++;
+
+                    if (pnode->ThinBlockCapable())
+                        nThinBlockCapable++;
+                    else
+                        ptemp = pnode;
+                }
+            }
+            // Disconnect a node that is not XTHIN capable if all outbound slots are full and we
+            // have not yet connected to enough XTHIN nodes.
+            if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min(4, nMaxOutConnections) && nDisconnects < 500 && IsThinBlocksEnabled())
+            {
+                if(ptemp)
+                {
+                    ptemp->fDisconnect = true;
+                    nDisconnects++;
+                }
+            }
+        }
 
         CSemaphoreGrant grant(*semOutbound);
         boost::this_thread::interruption_point();
@@ -1770,23 +1808,7 @@ void ThreadOpenConnections()
         // Choose an address to connect to based on most recently seen
         //
         CAddress addrConnect;
-
-        // Only connect out to one peer per network group (/16 for IPv4).
-        // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
-        int nOutbound = 0;
-        set<vector<unsigned char> > setConnected;
-        {
-            LOCK(cs_vNodes);
-            BOOST_FOREACH (CNode* pnode, vNodes) {
-                if (!pnode->fInbound) {
-                    setConnected.insert(pnode->addr.GetGroup());
-                    nOutbound++;
-                }
-            }
-        }
-
         int64_t nANow = GetAdjustedTime();
-
         int nTries = 0;
         while (true) {
             CAddrInfo addr = addrman.Select();
