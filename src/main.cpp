@@ -6072,7 +6072,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
         {
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 100);
-            return false;
+            return error("Invalid xthinblock received");
         }
 
         // Send expedited block ASAP
@@ -6107,7 +6107,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
         {
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 100);
-            return false;
+            return error("Invalid thinblock received");
         }
 
         CInv inv(MSG_BLOCK, thinBlock.header.GetHash());
@@ -6129,10 +6129,9 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
         // Message consistency checking
         if (thinRequestBlockTx.setCheapHashesToRequest.empty() || thinRequestBlockTx.blockhash.IsNull())
         {
-            LogPrintf("ERROR: incorrectly constructed get_xblocktx received.  Banning peer=%d\n", pfrom->id);
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 100);
-            return false;
+            return error("incorrectly constructed get_xblocktx received.  Banning peer=%d\n", pfrom->id);
         }
 
         // We use MSG_TX here even though we refer to blockhash because we need to track
@@ -6152,9 +6151,9 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
             pfrom->nGetXBlockTxCount += 1;
             LogPrint("thin", "nGetXBlockTxCount is %f\n", pfrom->nGetXBlockTxCount);
             if (pfrom->nGetXBlockTxCount >= 20) {
-                LogPrintf("DOS: Misbehaving - requesting too many xblocktx: %s\n", inv.hash.ToString());
                 LOCK(cs_main);
                 Misbehaving(pfrom->GetId(), 100);  // If they exceed the limit then disconnect them
+                return error("DOS: Misbehaving - requesting too many xblocktx: %s\n", inv.hash.ToString());
             }
         }
 
@@ -6164,7 +6163,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
             BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
             if (mi == mapBlockIndex.end())
             {
-                LogPrint("thin", "Requested block is not available");
+                return error("Requested block is not available");
             }
             else
             {
@@ -6172,7 +6171,7 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
                 const Consensus::Params& consensusParams = Params().GetConsensus();
                 if (!ReadBlockFromDisk(block, (*mi).second, consensusParams))
                 {
-                    LogPrint("thin", "Cannot load block from disk -- Block txn request before assembled");
+                    return error("Cannot load block from disk -- Block txn request before assembled");
                 }
                 else
                 {
@@ -6209,10 +6208,9 @@ bool ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, int64_t
             // Clear the thinblock timer used for preferential download
             thindata.ClearThinBlockTimer(inv.hash);
 
-            LogPrintf("ERROR: incorrectly constructed xblocktx or inconsistent thinblock data received.  Banning peer=%d\n", pfrom->id);
             LOCK(cs_main);
             Misbehaving(pfrom->GetId(), 100);
-            return false;
+            return error("incorrectly constructed xblocktx or inconsistent thinblock data received.  Banning peer=%d\n", pfrom->id);
         }
 
         LogPrint("net", "received blocktxs for %s peer=%d\n", inv.hash.ToString(), pfrom->id);
