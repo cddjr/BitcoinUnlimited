@@ -1782,7 +1782,8 @@ void ThreadOpenConnections()
             }
             // Disconnect a node that is not XTHIN capable if all outbound slots are full and we
             // have not yet connected to enough XTHIN nodes.
-            if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min((int)MIN_XTHIN_NODES, nMaxOutConnections) && nDisconnects < MAX_DISCONNECTS && IsThinBlocksEnabled() && IsChainNearlySyncd())
+            unsigned int nMinXthinNodes = GetArg("-min-xthin-nodes", MIN_XTHIN_NODES);
+            if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min((int)nMinXthinNodes, nMaxOutConnections) && nDisconnects < MAX_DISCONNECTS && IsThinBlocksEnabled() && IsChainNearlySyncd())
             {
                 if(ptemp != nullptr)
                 {
