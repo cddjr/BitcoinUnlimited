@@ -1763,9 +1763,10 @@ void ThreadOpenConnections()
         int nOutbound = 0;
         int nThinBlockCapable = 0;
         set<vector<unsigned char> > setConnected;
+        CNode* ptemp = nullptr;
+        bool fDisconnected = false;
         {
             LOCK(cs_vNodes);
-            CNode* ptemp = nullptr;
             BOOST_FOREACH (CNode* pnode, vNodes)
             {
                 if (pnode->fOutbound) // only count outgoing connections.
@@ -1781,17 +1782,41 @@ void ThreadOpenConnections()
             }
             // Disconnect a node that is not XTHIN capable if all outbound slots are full and we
             // have not yet connected to enough XTHIN nodes.
-            if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min((int)MIN_XTHIN_NODES, nMaxOutConnections) && nDisconnects < MAX_DISCONNECTS && IsThinBlocksEnabled() && !IsInitialBlockDownload())
+            if (nOutbound >= nMaxOutConnections && nThinBlockCapable <= min((int)MIN_XTHIN_NODES, nMaxOutConnections) && nDisconnects < MAX_DISCONNECTS && IsThinBlocksEnabled() && IsChainNearlySyncd())
             {
                 if(ptemp != nullptr)
                 {
                     ptemp->fDisconnect = true;
+                    fDisconnected = true;
                     nDisconnects++;
                 }
             }
         }
 
-        CSemaphoreGrant grant(*semOutbound);
+        // If disconnected then wait for disconnection completion
+        if (fDisconnected)
+        {
+            while (true)
+            {
+                MilliSleep(500);
+                {
+                    LOCK(cs_vNodes);
+                    if (find(vNodes.begin(), vNodes.end(), ptemp) == vNodes.end())
+                        break;
+                }
+            }
+        }
+
+        // During IBD we do not actively disconnect and search for XTHIN capable nodes therefore
+        // we need to check occasionally whether IBD is complete and whether we can start the process.
+        // Therefore we do a try_wait() rather than wait() when aquiring the semaphore and sleep and
+        // then continue if the grant is not given.
+        CSemaphoreGrant grant(*semOutbound, true);
+        if (!grant)
+        {
+            MilliSleep(60000);
+            continue;
+        }
         boost::this_thread::interruption_point();
 
         // Add seed nodes if DNS seeds are all down (an infrastructure attack?).
@@ -1810,7 +1835,8 @@ void ThreadOpenConnections()
         CAddress addrConnect;
         int64_t nANow = GetAdjustedTime();
         int nTries = 0;
-        while (true) {
+        while (true)
+        {
             CAddrInfo addr = addrman.Select();
 
             // if we selected an invalid address, restart
