@@ -295,9 +295,6 @@ struct CNodeState {
     bool fSyncCompleted;
     //! Last time headers were received for this node
     int64_t nLastHeadersReceived;
-
-    //! Since when we're stalling block download progress (in microseconds), or 0.
-    //  int64_t nStallingSince; // BU: no longer used
     list<QueuedBlock> vBlocksInFlight;
     //! When the first entry in vBlocksInFlight started downloading. Don't care when vBlocksInFlight is empty.
     int64_t nDownloadingSince;
@@ -462,7 +459,6 @@ bool MarkBlockAsReceived(const uint256& hash) {
         }
         state->vBlocksInFlight.erase(itInFlight->second.second);
         state->nBlocksInFlight--;
-        // state->nStallingSince = 0; // BU: no longer used
         mapBlocksInFlight.erase(itInFlight);
         return true;
     }
@@ -6991,18 +6987,6 @@ bool SendMessages(CNode* pto)
         if (!vInv.empty())
             pto->PushMessage(NetMsgType::INV, vInv);
 
-        /* BU: no longer used
-        // Detect whether we're stalling
-        nNow = GetTimeMicros();
-        if (!pto->fDisconnect && state.nStallingSince && state.nStallingSince < nNow - 1000000 * BLOCK_STALLING_TIMEOUT) {
-            // Stalling only triggers when the block download window cannot move. During normal steady state,
-            // the download window should be much larger than the to-be-downloaded set of blocks, so disconnection
-            // should only happen during initial block download.
-            LogPrintf("Peer=%d is stalling block download, disconnecting\n", pto->id);
-            pto->fDisconnect = true;
-        }
-        */
-
         // In case there is a block that has been in flight from this peer for 2 + 0.5 * N times the block interval
         // (with N the number of peers from which we're downloading validated blocks), disconnect due to timeout.
         // We compensate for other peers to prevent killing off peers due to our own downstream link
@@ -7085,14 +7069,6 @@ bool SendMessages(CNode* pto)
                 }
                 // BUIP010 Xtreme Thinblocks: end section
             }
-            /* BU: no longer used
-            if (state.nBlocksInFlight == 0 && staller != -1) {
-                if (State(staller)->nStallingSince == 0) {
-                    State(staller)->nStallingSince = nNow;
-                    LogPrint("net", "Stall started peer=%d\n", staller);
-                }
-            }
-            */
         }
 
         //
