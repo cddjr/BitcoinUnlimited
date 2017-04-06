@@ -6803,7 +6803,7 @@ bool SendMessages(CNode* pto)
             CNode::Ban(pto->addr, BanReasonNodeMisbehaving, 4*60*60); // ban for 4 hours
             LogPrintf("Banning %s because initial headers were either not received or not received before the timeout\n", pto->addr.ToString());
         }
-        else if (state.fSyncStarted && !state.fSyncCompleted)
+        else if (state.fSyncStarted && !state.fSyncCompleted && state.fFirstHeadersReceived)
         {
             if (state.nLastHeadersReceived < GetTime() - HEADERS_DOWNLOAD_TIMEOUT) {
                 pto->fDisconnect = true;
